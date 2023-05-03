@@ -8,7 +8,7 @@ from tools import *
 class FCN(nn.Module):
     "Defines a connected network"
     
-    def __init__(self, layers, x_domain, x_boundary, y_boundary):
+    def __init__(self, layers, x_domain, x_boundary, y_boundary, partial_diff_equation):
         # super().__init__()
         # activation = nn.Tanh
         # self.fcs = nn.Sequential(*[
@@ -43,6 +43,8 @@ class FCN(nn.Module):
         
         self.iter = 0
         self.float()
+
+        self.partial_diff_equation = partial_diff_equation
 
         'L-BFGS Optimizer'
         self.optimizer = optim.LBFGS(self.parameters(), lr, 
@@ -103,21 +105,16 @@ class FCN(nn.Module):
 
         f = self.forward(g)
 
-        f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
-        f_xx_yy = autograd.grad(f_x_y,g,torch.ones(g.shape), create_graph=True)[0]#second derivative
+        u = self.partial_diff_equation(f, g)
 
-        f_yy = f_xx_yy[:,[1]] # we select the 2nd element for y (the first one is x) (Remember the input X=[x,y]) 
-        f_xx = f_xx_yy[:,[0]] # we select the 1st element for x (the second one is y) (Remember the input X=[x,y])
+        u_hat = torch.zeros(x_PDE.shape[0],1)  
+        u_hat = u_hat.float()
 
-        f = f_xx + f_yy  
-        f = f.float()
+        loss = self.loss_function(u, u_hat)
 
-        f_hat = torch.zeros(x_PDE.shape[0],1)  
-        f_hat = f_hat.float()
+        self.loss_bc_history.append(loss)
 
-        self.loss_bc_history.append(self.loss_function(f, f_hat))
-
-        return self.loss_function(f, f_hat)   
+        return loss 
     
     def loss(self, x_BC, y_BC, x_PDE):
         loss_bc = self.loss_BC(x_BC, y_BC)
@@ -134,13 +131,12 @@ class FCN(nn.Module):
         self.iter += 1
 
         if self.iter % 50 == 1 or self.iter == 1:
-            print("Iter \t\t Loss \t\t\t Loss_BC \t Loss_PDE")
+            print("Iter \t\t Total Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE")
 
         if self.iter % 5 == 0:
             error_vec, _ = self.test()
             
-
-            print("%i \t\t %.3f \t\t %.3f \t\t %.3f" % (self.iter, loss.item(), loss_bc, loss_pde))
+            print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde))
 
         return loss 
 

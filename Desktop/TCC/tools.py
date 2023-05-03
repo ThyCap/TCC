@@ -4,13 +4,22 @@ import torch.optim as optim               # optimizers e.g. gradient descent, AD
 
 from pyDOE import lhs
 
+#Set default dtype to float32
+torch.set_default_dtype(torch.float64)
+
+#PyTorch random number generator
+torch.manual_seed(1234)
+
+# Random number generators in other libraries
+np.random.seed(1234)
+
 # Setting Up Variables
 T_avg = 0.5
 T_low = 0
 T_high = 1
 T_mid = .3
 
-R = 0.25
+R = 0.
 x_circle = 0.5
 y_circle = 0.5
 N_circle = 100
@@ -21,7 +30,7 @@ y_min, y_max, N_y = 0, 1, 100
 N_u = 200
 N_f = 100_000
 
-steps=1_000_000
+steps=10_000
 lr=1e-1
 layers = np.array([2,32,32,32,32,32,32,32,32,1]) #8 hidden layers
 

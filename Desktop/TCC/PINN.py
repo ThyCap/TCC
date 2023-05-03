@@ -2,27 +2,14 @@ from FCN import FCN
 from tools import *
 
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
 
 from PIL import Image
 
 import torch
 import torch.autograd as autograd         # computation graph
-from torch import Tensor                  # tensor node in the computation graph
-import torch.nn as nn                     # neural networks
-import torch.optim as optim               # optimizers e.g. gradient descent, ADAM, etc.
 
 import time
-
-#Set default dtype to float32
-torch.set_default_dtype(torch.float64)
-
-#PyTorch random number generator
-torch.manual_seed(1234)
-
-# Random number generators in other libraries
-np.random.seed(1234)
 
 # 'Convert to tensor and send to GPU'
 # X_train_Nf = torch.from_numpy(X_train_Nf).float()
@@ -34,7 +21,19 @@ np.random.seed(1234)
 
 'Neural Network Summary'
 
-PINN = FCN(layers, X_train_Nf, X_train_Nu, T_train)
+def partial_diff_equation(f, g):
+    f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
+    f_xx_yy = autograd.grad(f_x_y,g,torch.ones(g.shape), create_graph=True)[0]#second derivative
+
+    f_yy = f_xx_yy[:,[1]] # we select the 2nd element for y (the first one is x) (Remember the input X=[x,y]) 
+    f_xx = f_xx_yy[:,[0]] # we select the 1st element for x (the second one is y) (Remember the input X=[x,y])
+
+    u = f_xx + f_yy # loss equation
+    u = u.float()
+
+    return u
+
+PINN = FCN(layers, X_train_Nf, X_train_Nu, T_train, partial_diff_equation)
 print(PINN)
 
 params = list(PINN.parameters())
