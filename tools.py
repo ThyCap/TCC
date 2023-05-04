@@ -20,7 +20,7 @@ np.random.seed(1234)
 # 3. Diffusion in square with circular hole
 # 4. Combination ?
 hasInternalHeat = False
-squareHasHole = False
+squareHasHole = True
 
 # Setting Up Variables
 T_low, T_mid, T_high = 0, 0.3, 1
