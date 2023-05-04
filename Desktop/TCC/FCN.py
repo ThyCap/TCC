@@ -4,11 +4,12 @@ import torch.nn as nn                     # neural networks
 import torch.optim as optim               # optimizers e.g. gradient descent, ADAM, etc.
 
 from tools import *
+import time
 
 class FCN(nn.Module):
     "Defines a connected network"
     
-    def __init__(self, layers, x_domain, x_boundary, y_boundary, partial_diff_equation):
+    def __init__(self, layers, x_domain, x_boundary, y_boundary, x_test, partial_diff_equation):
         # super().__init__()
         # activation = nn.Tanh
         # self.fcs = nn.Sequential(*[
@@ -26,6 +27,7 @@ class FCN(nn.Module):
         self.x_domain = x_domain
         self.x_boundary = x_boundary
         self.y_boundary = y_boundary
+        self.x_test = x_test
               
         'activation function'
         self.activation = nn.Tanh()
@@ -42,6 +44,8 @@ class FCN(nn.Module):
         self.linears = nn.ModuleList([nn.Linear(layers[i], layers[i+1]) for i in range(len(layers)-1)])
         
         self.iter = 0
+        self.startTime = time.time()
+        self.totalElapsedTimeHistory = [0]
         self.float()
 
         self.partial_diff_equation = partial_diff_equation
@@ -67,12 +71,9 @@ class FCN(nn.Module):
     def forward(self, x):
         if torch.is_tensor(x) != True:         
             x = torch.from_numpy(x)                
-        
-        u_b = torch.from_numpy(ub).float()
-        l_b = torch.from_numpy(lb).float()
                       
         #preprocessing input 
-        x = (x - l_b)/(u_b - l_b) #feature scaling
+        x = (x - lb)/(ub - lb) #feature scaling
         
         #convert to float
         a = x.float()
@@ -129,22 +130,25 @@ class FCN(nn.Module):
         loss.backward()
 
         self.iter += 1
+        self.totalElapsedTimeHistory.append(time.time() - self.startTime)
 
         if self.iter % 50 == 1 or self.iter == 1:
-            print("Iter \t\t Total Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE")
+            print("Iter \t\t Total Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
 
         if self.iter % 5 == 0:
             error_vec, _ = self.test()
             
-            print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde))
+            print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
         return loss 
 
     def test(self):
+        X_test = self.x_test
+
         u_pred = self.forward(X_test)
         u = torch.zeros(u_pred.shape)
         error_vec = torch.linalg.norm((u-u_pred),2)      # L2 Norm of the error (Vector)
         u_pred = u_pred.cpu().detach().numpy()
-        u_pred = np.reshape(u_pred,(100,100),order='F')
+        u_pred = np.reshape(u_pred,(N_x, N_y),order='F')
                 
         return error_vec, u_pred 

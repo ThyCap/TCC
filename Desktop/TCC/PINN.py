@@ -33,24 +33,12 @@ def partial_diff_equation(f, g):
 
     return u
 
-PINN = FCN(layers, X_train_Nf, X_train_Nu, T_train, partial_diff_equation)
-print(PINN)
+X, Y, T = generate_domain()
+X_train, T_train, X_test, X_train_Nu, T_train_Nu = generate_BC(X, Y, T)
+X_train_PDE = generate_PDE()
 
-params = list(PINN.parameters())
+PINN = FCN(layers, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
 
-start_time = time.time()
+u_pred = NNCalculations(PINN)
 
-optimizer = PINN.optimizer
-
-optimizer.step(PINN.closure)
-
-elapsed = time.time() - start_time                
-print('Training time: %.2f' % (elapsed))
-
-
-''' Model Accuracy ''' 
-error_vec, u_pred = PINN.test()
-
-print('Test Error: %.5f'  % (error_vec))
-
-sns.heatmap(u_pred)
+torch.save(PINN.state_dict(), './PINN_file.pt')
