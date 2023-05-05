@@ -120,7 +120,19 @@ class FCN(nn.Module):
     def loss(self, x_BC, y_BC, x_PDE):
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)
-        return N_f/N_u*loss_bc + loss_pde, loss_bc.item(), loss_pde.item()
+        return np.sqrt(N_f/N_u)*loss_bc + loss_pde, loss_bc.item(), loss_pde.item()
+    
+    def lossTensor(self, x_Test):
+        x_Test = torch.from_numpy(x_Test)
+
+        g = x_Test.clone()
+        g.requires_grad = True
+
+        f = self.forward(g)
+
+        u = self.partial_diff_equation(f, g)
+
+        return u        
 
     'callable for optimizer'                                       
     def closure(self):

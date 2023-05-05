@@ -14,27 +14,19 @@ torch.manual_seed(1234)
 # Random number generators in other libraries
 np.random.seed(1234)
 
-# Define type of problem
-# 1. Simple diffusion in square
-# 2. Diffusion in square with internal heat
-# 3. Diffusion in square with circular hole
-# 4. Combination ?
-hasInternalHeat = False
-squareHasHole = True
-
 # Setting Up Variables
 T_low, T_mid, T_high = 0, 0.3, 1
 
-R, x_circle, y_circle, N_circle = 0.5, 0.5, 0.5, 100
-x_min, x_max, N_x = 0, 1, 200
-y_min, y_max, N_y = 0, 1, 200
+R, x_circle, y_circle, N_circle = 0.1, 0.5, 0.5, 500
+x_min, x_max, N_x = 0, 1, 500
+y_min, y_max, N_y = 0, 1, 500
 
-N_u = 200
+N_u = 800
 N_f = 100_000
 
 steps=1_000
 lr=1e-1
-layers = np.array([2,32,32,32,32,32,32,32,32,1]) #8 hidden layers
+layers = np.array([2,48,48,48,48,48,48,48,48,1]) #8 hidden layers
 tolerance = 1e-6
 
 #Domain bounds
@@ -76,16 +68,29 @@ def generate_circle():
     return circle_X, circle_T
 
 # Returns mask for elements of tensor outside a circle
-def isNotInCircleTensor(X):
+def isNotInCircleTensorOrder1(Tensor):
     boolList = []
 
-    for elem in X:
+    for elem in Tensor:
         x, y = elem
         boolList.append((x - x_circle)**2 + (y - y_circle)**2 - R**2 > tolerance)
 
     return boolList
 
-def generate_BC(X, Y, T):
+def isNotInCircleTensorOrder2(Tensor, x, y):
+    boolList = []
+
+    # If tensor order == 2, Tensor stores data in [i,j] position corresponding to x[i] and y[j]
+    for i in range(Tensor.shape[0]):
+        boolList_i = []
+        for j in range(Tensor.shape[1]):
+            boolList_i.append((x[i] - x_circle)**2 + (y[j] - y_circle)**2 - R**2 > tolerance)
+        
+        boolList.append(boolList_i)
+
+    return np.array(boolList)
+
+def generate_BC(X, Y, T, squareHasHole):
     # Boundary Conditions 
     # define boundary conditions zones:
     left_X = np.hstack((X[0,:][:,None], Y[0, :][:,None]))
@@ -106,27 +111,28 @@ def generate_BC(X, Y, T):
         T_train = np.vstack((T_train, circle_T))
 
     # randomly choose N_u indices for training
-    idx = np.random.choice(X_train.shape[0], N_u + N_circle, replace = False)
+    idx = np.random.choice(X_train.shape[0], N_u + N_circle*squareHasHole, replace = False)
 
     X_train_Nu = X_train[idx, :]
     T_train_Nu = T_train[idx, :]
 
     return X_train, T_train, X_test, X_train_Nu, T_train_Nu
 
-def generate_PDE():
+def generate_PDE(squareHasHole):
     # Latin Hypercube sampling for collocation points 
     # N_f sets of tuples(x,t)
     X_train_PDE = lb + (ub-lb)*lhs(2,N_f) 
 
-    X_train_PDE = X_train_PDE[isNotInCircleTensor(X_train_PDE)]
+    if squareHasHole:
+        X_train_PDE = X_train_PDE[isNotInCircleTensorOrder1(X_train_PDE)]
 
-    while X_train_PDE.shape[0] != N_f:
-        current_N = X_train_PDE.shape[0]
+        while X_train_PDE.shape[0] != N_f:
+            current_N = X_train_PDE.shape[0]
 
-        new_X_train_PDE = lb + (ub - lb)*lhs(2, N_f - current_N)
-        X_train_PDE = np.vstack((X_train_PDE, new_X_train_PDE))
+            new_X_train_PDE = lb + (ub - lb)*lhs(2, N_f - current_N)
+            X_train_PDE = np.vstack((X_train_PDE, new_X_train_PDE))
 
-        X_train_PDE = X_train_PDE[isNotInCircleTensor(X_train_PDE)]
+            X_train_PDE = X_train_PDE[isNotInCircleTensorOrder1(X_train_PDE)]
 
     return X_train_PDE
 

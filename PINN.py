@@ -19,7 +19,13 @@ import time
 # u = torch.from_numpy(u_true).float()  
 # f_hat = torch.zeros(X_train_Nf.shape[0],1)
 
-'Neural Network Summary'
+# Define type of problem
+# 1. Simple diffusion in square
+# 2. Diffusion in square with internal heat
+# 3. Diffusion in square with circular hole
+# 4. Combination ?
+hasInternalHeat = False
+squareHasHole = True
 
 def partial_diff_equation(f, g):
     f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
@@ -34,11 +40,18 @@ def partial_diff_equation(f, g):
     return u
 
 X, Y, T = generate_domain()
-X_train, T_train, X_test, X_train_Nu, T_train_Nu = generate_BC(X, Y, T)
-X_train_PDE = generate_PDE()
+X_train, T_train, X_test, X_train_Nu, T_train_Nu = generate_BC(X, Y, T, squareHasHole)
+X_train_PDE = generate_PDE(squareHasHole)
 
 PINN = FCN(layers, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
 
 u_pred = NNCalculations(PINN)
 
-torch.save(PINN.state_dict(), './PINN_file.pt')
+if not squareHasHole and not hasInternalHeat:
+    torch.save(PINN.state_dict(), './PINN_simple.pt')
+elif squareHasHole and not hasInternalHeat:
+    torch.save(PINN.state_dict(), './PINN_holed.pt')
+elif not squareHasHole and hasInternalHeat:
+    torch.save(PINN.state_dict(), './PINN_heated.pt')
+else:
+    torch.save(PINN.state_dict(), './PINN_mixed.pt')
