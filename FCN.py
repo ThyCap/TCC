@@ -9,7 +9,7 @@ import time
 class FCN(nn.Module):
     "Defines a connected network"
     
-    def __init__(self, layers, x_domain, x_boundary, y_boundary, x_test, partial_diff_equation):
+    def __init__(self, Problem, x_domain, x_boundary, y_boundary, x_test, partial_diff_equation):
         # super().__init__()
         # activation = nn.Tanh
         # self.fcs = nn.Sequential(*[
@@ -24,6 +24,7 @@ class FCN(nn.Module):
         # self.loss_function = nn.MSELOSS(reduction = 'mean')
         super().__init__() #call __init__ from parent class 
 
+        self.Problem = Problem
         self.x_domain = x_domain
         self.x_boundary = x_boundary
         self.y_boundary = y_boundary
@@ -41,7 +42,7 @@ class FCN(nn.Module):
         self.error_vec_history = []
     
         'Initialise neural network as a list using nn.Modulelist'  
-        self.linears = nn.ModuleList([nn.Linear(layers[i], layers[i+1]) for i in range(len(layers)-1)])
+        self.linears = nn.ModuleList([nn.Linear(Problem.layers[i], Problem.layers[i+1]) for i in range(len(Problem.layers)-1)])
         
         self.iter = 0
         self.startTime = time.time()
@@ -51,16 +52,16 @@ class FCN(nn.Module):
         self.partial_diff_equation = partial_diff_equation
 
         'L-BFGS Optimizer'
-        self.optimizer = optim.LBFGS(self.parameters(), lr, 
-                              max_iter = steps, 
+        self.optimizer = optim.LBFGS(self.parameters(), Problem.lr, 
+                              max_iter = Problem.steps, 
                               max_eval = None, 
                               tolerance_grad = 1e-14, 
                               tolerance_change = 1e-14, 
-                              history_size = steps, 
+                              history_size = Problem.steps, 
                               line_search_fn = 'strong_wolfe')
     
         'Xavier Normal Initialization'
-        for i in range(len(layers)-1):
+        for i in range(len(Problem.layers)-1):
             
             nn.init.xavier_normal_(self.linears[i].weight.data, gain=1.0)
             
@@ -69,6 +70,8 @@ class FCN(nn.Module):
 
 
     def forward(self, x):
+        lb, ub, layers = Problem.lb, Problem.ub, Problem.layers
+
         if torch.is_tensor(x) != True:         
             x = torch.from_numpy(x)                
                       
@@ -79,9 +82,7 @@ class FCN(nn.Module):
         a = x.float()
         
         for i in range(len(layers)-2):
-            
-            z = self.linears[i](a)
-                        
+            z = self.linears[i](a)         
             a = self.activation(z)
             
         a = self.linears[-1](a)
@@ -120,7 +121,7 @@ class FCN(nn.Module):
     def loss(self, x_BC, y_BC, x_PDE):
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)
-        return np.sqrt(N_f/N_u)*loss_bc + loss_pde, loss_bc.item(), loss_pde.item()
+        return np.sqrt(self.Problem.N_f/self.Problem.N_u)*loss_bc + loss_pde, loss_bc.item(), loss_pde.item()
     
     def lossTensor(self, x_Test):
         x_Test = torch.from_numpy(x_Test)
@@ -136,6 +137,7 @@ class FCN(nn.Module):
 
     'callable for optimizer'                                       
     def closure(self):
+        N_x, N_y = self.Problem.N_x, self.Problem.N_y
         optimizer = self.optimizer
         optimizer.zero_grad()
         loss, loss_bc, loss_pde = self.loss(self.x_boundary, self.y_boundary, self.x_domain)
@@ -155,6 +157,7 @@ class FCN(nn.Module):
         return loss 
 
     def test(self):
+        N_x, N_y = self.Problem.N_x, self.Problem.N_y
         X_test = self.x_test
 
         u_pred = self.forward(X_test)

@@ -39,11 +39,14 @@ def partial_diff_equation(f, g):
 
     return u
 
-X, Y, T = generate_domain()
-X_train, T_train, X_test, X_train_Nu, T_train_Nu = generate_BC(X, Y, T, squareHasHole)
-X_train_PDE = generate_PDE(squareHasHole)
+myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
+myProblem.changeTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
 
-PINN = FCN(layers, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
+X, Y, T = generate_domain(myProblem)
+X_train, T_train, X_test, X_train_Nu, T_train_Nu = generate_BC(myProblem, X, Y, T, squareHasHole)
+X_train_PDE = generate_PDE(myProblem, squareHasHole)
+
+PINN = FCN(myProblem.layers, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
 
 u_pred = NNCalculations(PINN)
 
