@@ -8,7 +8,6 @@ import time
 
 class FCN(nn.Module):
     "Defines a connected network"
-    
     def __init__(self, Problem, x_domain, x_boundary, y_boundary, x_test, partial_diff_equation):
         # super().__init__()
         # activation = nn.Tanh
@@ -68,9 +67,8 @@ class FCN(nn.Module):
             # set biases to zero
             nn.init.zeros_(self.linears[i].bias.data)
 
-
     def forward(self, x):
-        lb, ub, layers = Problem.lb, Problem.ub, Problem.layers
+        lb, ub, layers = self.Problem.lb, self.Problem.ub, self.Problem.layers
 
         if torch.is_tensor(x) != True:         
             x = torch.from_numpy(x)                
