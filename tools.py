@@ -50,7 +50,7 @@ class Problem:
         self.N_f = 100_000
 
         ## Optimizer and NN-related variables
-        self.steps = 1_000
+        self.steps = 10_000
         self.lr = 1e-1
         self.layers = np.array([2,32,32,32,32,32,32,32,32,1]) #8 hidden layers
         self.tolerance = 1e-6
@@ -141,10 +141,11 @@ class Problem:
         self.circle_T = circle_T
 
     # Returns a order 1 mask for elements of tensor outside a circle
-    def isNotInCircleTensorOrder1(self, Tensor):
+    def isNotInCircleTensorOrder1(self, Tensor, _):
+        print(Tensor)
         boolList = []
 
-        for elem in Tensor:
+        for elem in _:
             x, y = elem
             boolList.append((x - self.x_circle)**2 + (y - self.y_circle)**2 - self.R**2 > self.tolerance)
 
@@ -210,10 +211,7 @@ class Problem:
         X_train_PDE = lb + (ub-lb)*lhs(2,N_f) 
 
         if self.squareHasHole:
-            print(self)
-            mask = self.isNotInCircleTensorOrder1(self, X_train_PDE)
-            print(mask)
-            X_train_PDE = X_train_PDE[mask]
+            X_train_PDE = X_train_PDE[self.isNotInCircleTensorOrder1(self, X_train_PDE)]
 
             while X_train_PDE.shape[0] != N_f:
                 current_N = X_train_PDE.shape[0]
