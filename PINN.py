@@ -4,7 +4,8 @@ from tools import *
 import torch
 import torch.autograd as autograd         # computation graph
 
-fname = '.PINN_files/PINN_evolutive.pt'
+fname = './PINN_files/PINN_'
+suffix = 'evolutive'
 
 # Define type of problem
 # 1. Simple diffusion in square
@@ -34,6 +35,9 @@ X_train_PDE, X_train_Nu, T_train_Nu, X_test = myProblem.getDomains()
 
 PINN = FCN(myProblem, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
 
-u_pred = myProblem.NNCalculations(PINN)
+u_pred, loss_bc_history, loss_pde_history = myProblem.NNCalculations(PINN)
 
-torch.save(PINN.state_dict(), fname)
+torch.save(PINN.state_dict(), fname + suffix + '.pt')
+
+np.savetxt('./history_files/loss_bc_history_' + suffix + '.csv', np.asarray(loss_bc_history), delimiter=',')
+np.savetxt('./history_files/loss_pde_history_' + suffix + '.csv', np.asarray(loss_pde_history), delimiter=',')

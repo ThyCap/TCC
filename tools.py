@@ -48,7 +48,7 @@ class Problem:
 
         ## Number of points in samples
         self.N_u = 1000
-        self.N_f = 100_000
+        self.N_f = 10_000
 
         ## Optimizer and NN-related variables
         self.steps = 10_000
@@ -244,10 +244,10 @@ class Problem:
         print('Training time: %.2f' % (elapsed))
 
         ''' Model Accuracy ''' 
-        error_vec, u_pred = PINN.test()
+        error_vec, u_pred, loss_bc_history, loss_pde_history = PINN.test()
         print('Test Error: %.5f'  % (error_vec))
 
-        return u_pred
+        return u_pred, loss_bc_history, loss_pde_history
 
 # # Internal Heat Tensor
 # internalHeatTensor = torch.zeros((N_x, N_y))

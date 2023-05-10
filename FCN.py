@@ -96,7 +96,7 @@ class FCN(nn.Module):
         loss_bc = self.loss_function(y_forward_BC, y_BC)
         loss_bc = loss_bc.float()
 
-        self.loss_bc_history.append(loss_bc.float())
+        self.loss_bc_history.append(loss_bc.item())
 
         return loss_bc
 
@@ -115,7 +115,7 @@ class FCN(nn.Module):
 
         loss = self.loss_function(u, u_hat)
 
-        self.loss_bc_history.append(loss)
+        self.loss_pde_history.append(loss.item())
 
         return loss 
     
@@ -161,7 +161,7 @@ class FCN(nn.Module):
             print("Iter \t\t Total Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
 
         if self.iter % 5 == 0:
-            error_vec, _ = self.test()
+            error_vec, u_pred, loss_bc_history, loss_pde_history = self.test()
             
             print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
@@ -177,4 +177,4 @@ class FCN(nn.Module):
         u_pred = u_pred.cpu().detach().numpy()
         u_pred = np.reshape(u_pred,(N_x, N_y),order='F')
                 
-        return error_vec, u_pred 
+        return error_vec, u_pred, self.loss_bc_history, self.loss_pde_history
