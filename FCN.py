@@ -3,8 +3,11 @@ import torch.autograd as autograd         # computation graph
 import torch.nn as nn                     # neural networks
 import torch.optim as optim               # optimizers e.g. gradient descent, ADAM, etc.
 
-from tools import *
 import time
+
+import numpy as np
+from numpy.linalg import norm
+from tools import *
 
 class FCN(nn.Module):
     "Defines a connected network"
@@ -117,9 +120,19 @@ class FCN(nn.Module):
         return loss 
     
     def loss(self, x_BC, y_BC, x_PDE):
+        evolutiveWeights = self.Problem.evolutiveWeights
+        iter_n = self.iter/self.Problem.steps
+
+        if evolutiveWeights:
+            weights = [self.Problem.N_f/self.Problem.N_u*np.exp(-5*iter_n), 1 - np.exp(-5*iter_n)]
+            weights = np.array(weights, dtype = float)
+            weights = weights*norm([self.Problem.N_f/self.Problem.N_u, 1])/norm(weights)
+        else:
+            weights = [self.Problem.N_f/self.Problem.N_u, 1]
+
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)
-        return np.sqrt(self.Problem.N_f/self.Problem.N_u)*loss_bc + loss_pde, loss_bc.item(), loss_pde.item()
+        return weights[0]*loss_bc + weights[1]*loss_pde, loss_bc.item(), loss_pde.item()
     
     def lossTensor(self, x_Test):
         x_Test = torch.from_numpy(x_Test)

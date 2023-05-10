@@ -1,23 +1,10 @@
 from FCN import FCN
 from tools import *
 
-import numpy as np
-import seaborn as sns
-
-from PIL import Image
-
 import torch
 import torch.autograd as autograd         # computation graph
 
-import time
-
-# 'Convert to tensor and send to GPU'
-# X_train_Nf = torch.from_numpy(X_train_Nf).float()
-# X_train_Nu = torch.from_numpy(X_train_Nu).float()
-# U_train_Nu = torch.from_numpy(T_train_Nu).float()
-# X_test = torch.from_numpy(X_test).float()
-# u = torch.from_numpy(u_true).float()  
-# f_hat = torch.zeros(X_train_Nf.shape[0],1)
+fname = '.PINN_files/PINN_evolutive.pt'
 
 # Define type of problem
 # 1. Simple diffusion in square
@@ -26,6 +13,7 @@ import time
 # 4. Combination ?
 hasInternalHeat = False
 squareHasHole = True
+evolutiveWeights = True
 
 def partial_diff_equation(f, g):
     f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
@@ -39,7 +27,7 @@ def partial_diff_equation(f, g):
 
     return u
 
-myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
+myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat, evolutiveWeights)
 myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
 
 X_train_PDE, X_train_Nu, T_train_Nu, X_test = myProblem.getDomains()
@@ -48,11 +36,4 @@ PINN = FCN(myProblem, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_
 
 u_pred = myProblem.NNCalculations(PINN)
 
-if not squareHasHole and not hasInternalHeat:
-    torch.save(PINN.state_dict(), './PINN_simple.pt')
-elif squareHasHole and not hasInternalHeat:
-    torch.save(PINN.state_dict(), './PINN_holed.pt')
-elif not squareHasHole and hasInternalHeat:
-    torch.save(PINN.state_dict(), './PINN_heated.pt')
-else:
-    torch.save(PINN.state_dict(), './PINN_mixed.pt')
+torch.save(PINN.state_dict(), fname)

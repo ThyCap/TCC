@@ -15,9 +15,10 @@ np.random.seed(1234)
 
 class Problem:
     # Initialization function
-    def __init__(self, partial_diff_equation, squareHasHole, hasInternalHeat):
+    def __init__(self, partial_diff_equation, squareHasHole, hasInternalHeat, evolutiveWeights):
         self.squareHasHole = squareHasHole
         self.hasInternalHeat = hasInternalHeat
+        self.evolutiveWeights = evolutiveWeights
 
         'Standard values variables'
         # Partial differential equation
@@ -141,11 +142,10 @@ class Problem:
         self.circle_T = circle_T
 
     # Returns a order 1 mask for elements of tensor outside a circle
-    def isNotInCircleTensorOrder1(self, Tensor, _):
-        print(Tensor)
+    def isNotInCircleTensorOrder1(self, Tensor):
         boolList = []
 
-        for elem in _:
+        for elem in Tensor:
             x, y = elem
             boolList.append((x - self.x_circle)**2 + (y - self.y_circle)**2 - self.R**2 > self.tolerance)
 
@@ -211,7 +211,7 @@ class Problem:
         X_train_PDE = lb + (ub-lb)*lhs(2,N_f) 
 
         if self.squareHasHole:
-            X_train_PDE = X_train_PDE[self.isNotInCircleTensorOrder1(self, X_train_PDE)]
+            X_train_PDE = X_train_PDE[self.isNotInCircleTensorOrder1(X_train_PDE)]
 
             while X_train_PDE.shape[0] != N_f:
                 current_N = X_train_PDE.shape[0]
@@ -219,7 +219,7 @@ class Problem:
                 new_X_train_PDE = lb + (ub - lb)*lhs(2, N_f - current_N)
                 X_train_PDE = np.vstack((X_train_PDE, new_X_train_PDE))
 
-                X_train_PDE = X_train_PDE[self.isNotInCircleTensorOrder1(self, X_train_PDE)]
+                X_train_PDE = X_train_PDE[self.isNotInCircleTensorOrder1(X_train_PDE)]
 
         self.X_train_PDE = X_train_PDE
 
