@@ -1,12 +1,10 @@
 import torch
-import torch.autograd as autograd         # computation graph
 import torch.nn as nn                     # neural networks
 import torch.optim as optim               # optimizers e.g. gradient descent, ADAM, etc.
 
 import time
 
 import numpy as np
-from numpy.linalg import norm
 from tools import *
 
 class FCN(nn.Module):
@@ -40,6 +38,7 @@ class FCN(nn.Module):
 
         'loss value storage'
         self.loss_bc_history = []
+        self.loss_history = []
         self.loss_pde_history = []
         self.error_vec_history = []
     
@@ -54,13 +53,14 @@ class FCN(nn.Module):
         self.partial_diff_equation = partial_diff_equation
 
         'L-BFGS Optimizer'
-        self.optimizer = optim.LBFGS(self.parameters(), Problem.lr, 
-                              max_iter = Problem.steps, 
-                              max_eval = None, 
-                              tolerance_grad = 1e-14, 
-                              tolerance_change = 1e-14, 
-                              history_size = Problem.steps, 
-                              line_search_fn = 'strong_wolfe')
+        self.optimizer = optim.LBFGS(self.parameters(), 
+                                    lr = Problem.lr, 
+                                    max_iter = Problem.steps, 
+                                    max_eval = 10_000, 
+                                    tolerance_grad = 1e-14, 
+                                    tolerance_change = 1e-14, 
+                                    history_size = 10_000, 
+                                    line_search_fn = 'strong_wolfe')
     
         'Xavier Normal Initialization'
         for i in range(len(Problem.layers)-1):
@@ -96,8 +96,6 @@ class FCN(nn.Module):
         loss_bc = self.loss_function(y_forward_BC, y_BC)
         loss_bc = loss_bc.float()
 
-        self.loss_bc_history.append(loss_bc.item())
-
         return loss_bc
 
     def loss_PDE(self, x_PDE):
@@ -115,24 +113,21 @@ class FCN(nn.Module):
 
         loss = self.loss_function(u, u_hat)
 
-        self.loss_pde_history.append(loss.item())
-
         return loss 
     
     def loss(self, x_BC, y_BC, x_PDE):
-        evolutiveWeights = self.Problem.evolutiveWeights
-        iter_n = self.iter/self.Problem.steps
-
-        if evolutiveWeights:
-            weights = [self.Problem.N_f/self.Problem.N_u*np.exp(-5*iter_n), 1 - np.exp(-5*iter_n)]
-            weights = np.array(weights, dtype = float)
-            weights = weights*norm([self.Problem.N_f/self.Problem.N_u, 1])/norm(weights)
-        else:
-            weights = [self.Problem.N_f/self.Problem.N_u, 1]
+        weights = [self.Problem.N_u, self.Problem.N_f]
 
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)
-        return weights[0]*loss_bc + weights[1]*loss_pde, loss_bc.item(), loss_pde.item()
+
+        loss = weights[0]*loss_bc + weights[1]*loss_pde
+
+        self.loss_history.append(loss.item())
+        self.loss_bc_history.append(loss_bc.item())
+        self.loss_pde_history.append(loss_pde.item())
+
+        return loss, loss_bc.item(), loss_pde.item()
     
     def lossTensor(self, x_Test):
         x_Test = torch.from_numpy(x_Test)
@@ -149,6 +144,7 @@ class FCN(nn.Module):
     'callable for optimizer'                                       
     def closure(self):
         N_x, N_y = self.Problem.N_x, self.Problem.N_y
+
         optimizer = self.optimizer
         optimizer.zero_grad()
         loss, loss_bc, loss_pde = self.loss(self.x_boundary, self.y_boundary, self.x_domain)
@@ -158,10 +154,10 @@ class FCN(nn.Module):
         self.totalElapsedTimeHistory.append(time.time() - self.startTime)
 
         if self.iter % 50 == 1 or self.iter == 1:
-            print("Iter \t\t Total Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
+            print("Iter \t\t Combined Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
 
         if self.iter % 5 == 0:
-            error_vec, u_pred, loss_bc_history, loss_pde_history = self.test()
+            error_vec, u_pred, lossHistoryTensor = self.test()
             
             print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
@@ -176,5 +172,7 @@ class FCN(nn.Module):
         error_vec = torch.linalg.norm((u-u_pred),2)      # L2 Norm of the error (Vector)
         u_pred = u_pred.cpu().detach().numpy()
         u_pred = np.reshape(u_pred,(N_x, N_y),order='F')
+
+        lossHistoryTensor = [self.loss_history, self.loss_bc_history, self.loss_pde_history]
                 
-        return error_vec, u_pred, self.loss_bc_history, self.loss_pde_history
+        return error_vec, u_pred, lossHistoryTensor

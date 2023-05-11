@@ -15,10 +15,9 @@ np.random.seed(1234)
 
 class Problem:
     # Initialization function
-    def __init__(self, partial_diff_equation, squareHasHole, hasInternalHeat, evolutiveWeights):
+    def __init__(self, partial_diff_equation, squareHasHole, hasInternalHeat):
         self.squareHasHole = squareHasHole
         self.hasInternalHeat = hasInternalHeat
-        self.evolutiveWeights = evolutiveWeights
 
         'Standard values variables'
         # Partial differential equation
@@ -35,10 +34,10 @@ class Problem:
         ## Sides
         self.x_min = 0
         self.x_max = 1
-        self.N_x = 500
+        self.N_x = 1500
         self.y_min = 0
         self.y_max = 1
-        self.N_y = 500
+        self.N_y = 1500
         
         ## Circle
         self.R = 0.1
@@ -53,7 +52,7 @@ class Problem:
         ## Optimizer and NN-related variables
         self.steps = 10_000
         self.lr = 1e-1
-        self.layers = np.array([2,32,32,32,32,32,32,32,32,1]) #8 hidden layers
+        self.layers = np.array([2,64,64,64,64,64,64,64,64,1]) #8 hidden layers
         self.tolerance = 1e-6
 
         ## Domain bounds
@@ -184,6 +183,8 @@ class Problem:
 
         X_test = np.hstack((X.flatten()[:, None], Y.flatten()[:, None]))
 
+        # X_train = np.vstack((left_X, right_X))
+        # T_train = np.vstack((left_T, right_T))
         X_train = np.vstack((left_X, top_X, right_X, bottom_X))
         T_train = np.vstack((left_T, top_T, right_T, bottom_T))
 
@@ -244,10 +245,10 @@ class Problem:
         print('Training time: %.2f' % (elapsed))
 
         ''' Model Accuracy ''' 
-        error_vec, u_pred, loss_bc_history, loss_pde_history = PINN.test()
+        error_vec, u_pred, lossHistoryTensor = PINN.test()
         print('Test Error: %.5f'  % (error_vec))
 
-        return u_pred, loss_bc_history, loss_pde_history
+        return u_pred, lossHistoryTensor
 
 # # Internal Heat Tensor
 # internalHeatTensor = torch.zeros((N_x, N_y))
