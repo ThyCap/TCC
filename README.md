@@ -12,3 +12,8 @@ OK -- Create Top and Bottom BCs
 -- Evolution plot on loss_bc and loss_pde
 -- Statement on number of iterations
 -- Understand why it stops
+
+# Lessons learned: 
+-- NN will optimize to a sharp second derivative. Possible hypotheses:
+    -- 1. overfitting due to number of layers/nodes
+    -- 2. Sampling points fall out of sharp points
