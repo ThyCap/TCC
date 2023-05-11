@@ -31,6 +31,8 @@ myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
 myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
 # myProblem.setTemp(T_left = 0, T_top = 0.3, T_right= 1, T_bottom= 0.5, T_circle= 1)
 
+myProblem.setNNVars(N_Layers=4)
+
 X_train_PDE, X_train_Nu, T_train_Nu, X_test = myProblem.getDomains()
 
 PINN = FCN(myProblem, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)

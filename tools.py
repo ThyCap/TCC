@@ -52,7 +52,9 @@ class Problem:
         ## Optimizer and NN-related variables
         self.steps = 10_000
         self.lr = 1e-1
-        self.layers = np.array([2,64,64,64,64,64,64,64,64,1]) #8 hidden layers
+        self.N_Layers = 8
+        self.Nodes = 32
+        self.layers = np.hstack([[2], np.full(self.N_Layers,32), [1]]) #8 hidden layers
         self.tolerance = 1e-6
 
         ## Domain bounds
@@ -93,10 +95,12 @@ class Problem:
         self.N_f = N_f
     
     # neural network variables
-    def setNNVars(self, steps = 1_000, lr = 1e-1, layers = np.array([2,32,32,32,32,32,32,32,32,1]), tolerance = 1e-6):
+    def setNNVars(self, steps = 1_000, lr = 1e-1, N_Layers = 8, Nodes = 32, tolerance = 1e-6):
         self.steps = steps
         self.lr = lr
-        self.layers = layers
+        self.N_Layers = N_Layers
+        self.Nodes = Nodes
+        self.layers = np.hstack([[2], np.full(self.N_Layers,32), [1]]) #8 hidden layers
         self.tolerance = tolerance
 
     # generate domain function
