@@ -117,7 +117,24 @@ class FCN(nn.Module):
         return loss 
     
     def loss(self, x_BC, y_BC, x_PDE):
-        weights = [self.Problem.N_u, self.Problem.N_f]
+        ## Possibilities for weight system
+        # 1. simple: weights = [1,1]
+        # 2. sized: weights = [N_u, N_f]
+        # 3. sqSized: weights = [sqrt(N_u), sqrt(N_f)]
+        # 4. evolutiveSized: weights = [sqrt(N_u)*(1 - exp(-5*t)), sqrt(N_f)*exp(-5*t)]
+        # 5. evolutiveSimple: weights = [(1 - exp(-5*t)), exp(-5*t)]
+        if self.Problem.weightsType == 'simple':
+            weights = [1, 1]
+        elif self.Problem.weightsType == 'sized':
+            weights = [self.Problem.N_u, self.Problem.N_f]
+        elif self.Problem.weightsType == 'sqSized':
+            weights = [np.sqrt(self.Problem.N_u), np.sqrt(self.Problem.N_f)]
+        elif self.Problem.weightsType == 'evolutiveSized':
+            i_norm = self.iter/self.Problem.steps
+            weights = [self.Problem.N_u*(1 - np.exp(-5*i_norm)), self.Problem.N_f*np.exp(-5*i_norm)]
+        elif self.Problem.weightsType == 'evolutiveSimple':
+            i_norm = self.iter/self.Problem.steps
+            weights = [(1 - np.exp(-5*i_norm)), np.exp(-5*i_norm)]
 
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)

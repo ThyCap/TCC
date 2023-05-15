@@ -15,9 +15,9 @@ np.random.seed(1234)
 
 class Problem:
     # Initialization function
-    def __init__(self, partial_diff_equation, squareHasHole, hasInternalHeat):
+    def __init__(self, partial_diff_equation, squareHasHole, weightsType):
         self.squareHasHole = squareHasHole
-        self.hasInternalHeat = hasInternalHeat
+        self.weightsType = weightsType
 
         'Standard values variables'
         # Partial differential equation
@@ -252,6 +252,3 @@ class Problem:
         u_pred, lossHistoryTensor, u_pred_history = PINN.test()
 
         return u_pred, lossHistoryTensor, u_pred_history
-
-# # Internal Heat Tensor
-# internalHeatTensor = torch.zeros((N_x, N_y))

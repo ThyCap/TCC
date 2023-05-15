@@ -12,8 +12,16 @@ suffix = 'wHole'
 # 2. Diffusion in square with internal heat
 # 3. Diffusion in square with circular hole
 # 4. Combination ?
-hasInternalHeat = False
 squareHasHole = True
+# internal heat to be implemented
+
+## Possibilities for weight system
+# 1. simple: weights = [1,1]
+# 2. sized: weights = [N_u, N_f]
+# 3. sqSized: weights = [sqrt(N_u), sqrt(N_f)]
+# 4. evolutiveSized: weights = [sqrt(N_u)*(1 - exp(-5*t)), sqrt(N_f)*exp(-5*t)]
+# 5. evolutiveSimple: weights = [(1 - exp(-5*t)), exp(-5*t)]
+weightsType = 'simple' 
 
 def partial_diff_equation(f, g):
     f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
@@ -27,7 +35,7 @@ def partial_diff_equation(f, g):
 
     return u
 
-myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
+myProblem = Problem(partial_diff_equation, squareHasHole, weightsType)
 myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
 # myProblem.setTemp(T_left = 0, T_top = 0.3, T_right= 1, T_bottom= 0.5, T_circle= 1)
 
