@@ -13,7 +13,7 @@ fname = './PINN_files/PINN_'
 # 3. Diffusion in square with circular hole
 # 4. Combination ?
 hasInternalHeat = False
-squareHasHole = True
+squareHasHole = False
 
 def partial_diff_equation(f, g):
     f_x_y = autograd.grad(f,g,torch.ones([g.shape[0], 1]), retain_graph=True, create_graph=True)[0] #first derivative
@@ -29,8 +29,8 @@ def partial_diff_equation(f, g):
 
 for N in [2,4,6,8]:
     myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
-    myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
-    # myProblem.setTemp(T_left = 0, T_top = 0.3, T_right= 1, T_bottom= 0.5, T_circle= 1)
+    # myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
+    myProblem.setTemp(T_left = 0, T_top = 0.3, T_right= 1, T_bottom= 0.5, T_circle= 1)
 
     myProblem.setNNVars(N_Layers=4)
     suffix = 'test_' + str(N)

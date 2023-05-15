@@ -41,6 +41,7 @@ class FCN(nn.Module):
         self.loss_history = []
         self.loss_pde_history = []
         self.error_vec_history = []
+        self.u_pred_history = []
     
         'Initialise neural network as a list using nn.Modulelist'  
         self.linears = nn.ModuleList([nn.Linear(Problem.layers[i], Problem.layers[i+1]) for i in range(len(Problem.layers)-1)])
@@ -151,7 +152,7 @@ class FCN(nn.Module):
         loss.backward()
 
         self.iter += 1
-        self.totalElapsedTimeHistory.append(time.time() - self.startTime)
+        self.totalElapsedTimeHistory.append(time.time() - self.startTime)        
 
         if self.iter % 50 == 1 or self.iter == 1:
             print("Iter \t\t Combined Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
@@ -159,6 +160,10 @@ class FCN(nn.Module):
         if self.iter % 5 == 0:
             error_vec, u_pred, lossHistoryTensor = self.test()
             
+            if self.iter % 50 == 0:
+                # save u_pred history
+                self.u_pred_history.append(u_pred)
+
             print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
         return loss 
@@ -168,11 +173,9 @@ class FCN(nn.Module):
         X_test = self.x_test
 
         u_pred = self.forward(X_test)
-        u = torch.zeros(u_pred.shape)
-        error_vec = torch.linalg.norm((u-u_pred),2)      # L2 Norm of the error (Vector)
         u_pred = u_pred.cpu().detach().numpy()
         u_pred = np.reshape(u_pred,(N_x, N_y),order='F')
 
         lossHistoryTensor = [self.loss_history, self.loss_bc_history, self.loss_pde_history]
                 
-        return error_vec, u_pred, lossHistoryTensor
+        return u_pred, lossHistoryTensor, self.u_pred_history

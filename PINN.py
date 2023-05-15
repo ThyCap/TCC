@@ -31,16 +31,18 @@ myProblem = Problem(partial_diff_equation, squareHasHole, hasInternalHeat)
 myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
 # myProblem.setTemp(T_left = 0, T_top = 0.3, T_right= 1, T_bottom= 0.5, T_circle= 1)
 
-myProblem.setNNVars(N_Layers=4)
-
 X_train_PDE, X_train_Nu, T_train_Nu, X_test = myProblem.getDomains()
 
 PINN = FCN(myProblem, X_train_PDE, X_train_Nu, T_train_Nu, X_test, partial_diff_equation)
 
-u_pred, [lossHistory, lossBCHistory, lossPDEHistory] = myProblem.NNCalculations(PINN)
+u_pred, [lossHistory, lossBCHistory, lossPDEHistory], u_pred_history = myProblem.NNCalculations(PINN)
 
 torch.save(PINN.state_dict(), fname + suffix + '.pt')
 
 np.savetxt('./history_files/loss_history_' + suffix + '.csv', np.asarray(lossHistory), delimiter=',')
 np.savetxt('./history_files/loss_bc_history_' + suffix + '.csv', np.asarray(lossBCHistory), delimiter=',')
 np.savetxt('./history_files/loss_pde_history_' + suffix + '.csv', np.asarray(lossPDEHistory), delimiter=',')
+
+np.savetxt('./u_pred_history/u_pred_history_' + suffix + '.csv', np.asarray(u_pred_history), delimiter=',')
+
+print("Saved to :" + fname + suffix + ".pt")
