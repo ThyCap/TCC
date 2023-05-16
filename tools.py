@@ -15,7 +15,7 @@ np.random.seed(1234)
 
 class Problem:
     # Initialization function
-    def __init__(self, partial_diff_equation, squareHasHole, weightsType):
+    def __init__(self, partial_diff_equation, squareHasHole, weightsType = 'sqSized'):
         self.squareHasHole = squareHasHole
         self.weightsType = weightsType
 
@@ -29,6 +29,9 @@ class Problem:
         self.T_right = 1
         self.T_bottom = 1
         self.T_circle = 0.5
+
+        # BC booleans
+        [self.BC_left, self.BC_top, self.BC_right, self.BC_bottom] = [True, True, True, True]
 
         # Domain definition variables
         ## Sides
@@ -81,6 +84,12 @@ class Problem:
         self.y_min = y_min
         self.y_max = y_max
         self.N_y = N_y
+
+    def BCbooleans(self, BC_left, BC_top, BC_right, BC_bottom):
+        self.BC_left = BC_left
+        self.BC_top = BC_top
+        self.BC_right = BC_right
+        self.BC_bottom = BC_bottom
 
     # circle variables
     def setCircleVars(self, R = 0.1, x_circle = 0.5, y_circle = 0.5, N_circle = 500):
@@ -171,26 +180,43 @@ class Problem:
     # generate BC zones
     def generate_BC(self):
         X, Y = self.X, self.Y
+
+        X_train_list = []
+        T_train_list = []
         # Boundary Conditions 
         # define boundary conditions zones:
-        left_X = np.hstack((X[0, :][:, None], Y[0, :][:, None]))
-        left_T = np.ones((left_X.shape[0], 1))*self.T_left
+        if self.BC_left:
+            left_X = np.hstack((X[0, :][:, None], Y[0, :][:, None]))
+            left_T = np.ones((left_X.shape[0], 1))*self.T_left
 
-        top_X = np.hstack((X[:, -1][:, None], Y[:, -1][:, None]))
-        top_T = np.ones((top_X.shape[0], 1))*self.T_top
+            X_train_list.append(left_X)
+            T_train_list.append(left_T)
 
-        right_X = np.hstack((X[-1, :][:, None], Y[0, :][:, None]))
-        right_T = np.ones((right_X.shape[0], 1)) *self.T_right
+        if self.BC_top:
+            top_X = np.hstack((X[:, -1][:, None], Y[:, -1][:, None]))
+            top_T = np.ones((top_X.shape[0], 1))*self.T_top
 
-        bottom_X = np.hstack((X[:, 0][:, None], Y[:, 0][:, None]))
-        bottom_T = np.ones((bottom_X.shape[0], 1)) *self.T_bottom
+            X_train_list.append(top_X)
+            T_train_list.append(top_T)
+
+        if self.BC_right:
+            right_X = np.hstack((X[-1, :][:, None], Y[0, :][:, None]))
+            right_T = np.ones((right_X.shape[0], 1)) *self.T_right
+
+            X_train_list.append(right_X)
+            T_train_list.append(right_T)
+
+        if self.BC_bottom:
+            bottom_X = np.hstack((X[:, 0][:, None], Y[:, 0][:, None]))
+            bottom_T = np.ones((bottom_X.shape[0], 1)) *self.T_bottom
+
+            X_train_list.append(bottom_X)
+            T_train_list.append(bottom_T)
+
+        X_train = np.vstack(X_train_list)
+        T_train = np.vstack(T_train_list)
 
         X_test = np.hstack((X.flatten()[:, None], Y.flatten()[:, None]))
-
-        # X_train = np.vstack((left_X, right_X))
-        # T_train = np.vstack((left_T, right_T))
-        X_train = np.vstack((left_X, top_X, right_X, bottom_X))
-        T_train = np.vstack((left_T, top_T, right_T, bottom_T))
 
         if self.squareHasHole:
             self.generate_circle()
