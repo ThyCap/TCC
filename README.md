@@ -14,9 +14,11 @@ OK -- Statement on number of iterations
 -- Understand why it stops
     OK -- 1. Total loss rises 
     -- ...
--- "Transposed" simple case
+OK -- "Transposed" simple case
 -- Study on Nu, Nf and Nf/Nu
 -- Study on weights system
+-- Fix legend labels on pplot2
+    -- Understand process of loss_history
 
 # Lessons learned: 
 -- NN will optimize to a very sharp second derivative. Possible hypotheses:

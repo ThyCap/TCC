@@ -135,6 +135,9 @@ class FCN(nn.Module):
         elif self.Problem.weightsType == 'evolutiveSimple':
             i_norm = self.iter/self.Problem.steps
             weights = [(1 - np.exp(-5*i_norm)), np.exp(-5*i_norm)]
+        
+        #normalize weights
+        weights = weights/sum(weights)
 
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)

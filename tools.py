@@ -46,7 +46,7 @@ class Problem:
         self.R = 0.1
         self.x_circle = 0.5
         self.y_circle = 0.5
-        self.N_circle = 500
+        self.N_circle = 1500
 
         ## Number of points in samples
         self.N_u = 1000
