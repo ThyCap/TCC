@@ -137,7 +137,7 @@ class FCN(nn.Module):
             weights = [(1 - np.exp(-5*i_norm)), np.exp(-5*i_norm)]
         
         #normalize weights
-        weights = weights/sum(weights)
+        weights = np.array(weights)/sum(weights)
 
         loss_bc = self.loss_BC(x_BC, y_BC)
         loss_pde = self.loss_PDE(x_PDE)
@@ -175,7 +175,7 @@ class FCN(nn.Module):
         self.totalElapsedTimeHistory.append(time.time() - self.startTime)        
 
         if self.iter % 50 == 1 or self.iter == 1:
-            print("Iter \t\t Combined Loss \t\t Loss per element \t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
+            print("Iter \t\t Combined Loss \t\t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
 
         if self.iter % 5 == 0:
             error_vec, u_pred, lossHistoryTensor = self.test()
@@ -184,7 +184,7 @@ class FCN(nn.Module):
                 # save u_pred history
                 self.u_pred_history.append(u_pred)
 
-            print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(),loss.item()/(N_x*N_y), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
+            print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
         return loss 
 
