@@ -41,7 +41,6 @@ class FCN(nn.Module):
         self.loss_history = []
         self.loss_pde_history = []
         self.error_vec_history = []
-        self.u_pred_history = []
     
         'Initialise neural network as a list using nn.Modulelist'  
         self.linears = nn.ModuleList([nn.Linear(Problem.layers[i], Problem.layers[i+1]) for i in range(len(Problem.layers)-1)])
@@ -129,12 +128,6 @@ class FCN(nn.Module):
             weights = [self.Problem.N_u, self.Problem.N_f]
         elif self.Problem.weightsType == 'sqSized':
             weights = [np.sqrt(self.Problem.N_u), np.sqrt(self.Problem.N_f)]
-        elif self.Problem.weightsType == 'evolutiveSized':
-            i_norm = self.iter/self.Problem.steps
-            weights = [self.Problem.N_u*(1 - np.exp(-5*i_norm)), self.Problem.N_f*np.exp(-5*i_norm)]
-        elif self.Problem.weightsType == 'evolutiveSimple':
-            i_norm = self.iter/self.Problem.steps
-            weights = [(1 - np.exp(-5*i_norm)), np.exp(-5*i_norm)]
         
         #normalize weights
         weights = np.array(weights)/sum(weights)
@@ -178,11 +171,15 @@ class FCN(nn.Module):
             print("Iter \t\t Combined Loss \t\t Mean Loss_BC \t\t Mean Loss_PDE \t\t Total Elapsed Time (s)")
 
         if self.iter % 5 == 0:
-            error_vec, u_pred, lossHistoryTensor = self.test()
-            
-            if self.iter % 50 == 0:
-                # save u_pred history
-                self.u_pred_history.append(u_pred)
+
+            if self.iter % 100 == 0 and self.iter > 1:
+                u_pred, lossHistoryTensor = self.test()
+                lossTensor = self.lossTensor(self.x_test)
+
+                lossTensor = lossTensor.detach().numpy()
+
+                np.savetxt('./iter_evolution_study/u_pred/u_pred@' + str(self.iter) + '.csv', np.asarray(u_pred), delimiter=',')
+                np.savetxt('./iter_evolution_study/lossTensor/lossTensor@' + str(self.iter) + '.csv', np.asarray(lossTensor), delimiter=',')
 
             print("%i \t\t %.3e \t\t %.3e \t\t %.3e \t\t %.3e" % (self.iter, loss.item(), loss_bc, loss_pde, self.totalElapsedTimeHistory[-1]))
 
@@ -198,4 +195,4 @@ class FCN(nn.Module):
 
         lossHistoryTensor = [self.loss_history, self.loss_bc_history, self.loss_pde_history]
                 
-        return u_pred, lossHistoryTensor, self.u_pred_history
+        return u_pred, lossHistoryTensor
