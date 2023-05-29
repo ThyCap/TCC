@@ -24,41 +24,24 @@ class Problem:
         self.partial_diff_equation = partial_diff_equation
 
         # Temperature values
-        self.T_left = 0
-        self.T_top = 0
-        self.T_right = 1
-        self.T_bottom = 1
-        self.T_circle = 0.5
+        self.setTemp()
 
-        # BC booleans
-        [self.BC_left, self.BC_top, self.BC_right, self.BC_bottom] = [True, True, True, True]
+        # BC type
+        # Choose between 'Dirichlet', 'Neumann', None
+        self.setBCtypes()
 
         # Domain definition variables
         ## Sides
-        self.x_min = 0
-        self.x_max = 1
-        self.N_x = 1500
-        self.y_min = 0
-        self.y_max = 1
-        self.N_y = 1500
+        self.setDomainVars()
         
         ## Circle
-        self.R = 0.1
-        self.x_circle = 0.5
-        self.y_circle = 0.5
-        self.N_circle = 1500
+        self.setCircleVars()
 
         ## Number of points in samples
-        self.N_u = 1000
-        self.N_f = 100_000
+        self.setSamplingVars()
 
         ## Optimizer and NN-related variables
-        self.steps = 10_000
-        self.lr = 1e-1
-        self.N_Layers = 8
-        self.Nodes = 32
-        self.layers = np.hstack([[2], np.full(self.N_Layers,32), [1]]) #8 hidden layers
-        self.tolerance = 1e-6
+        self.setNNVars()
 
         ## Domain bounds
         self.lb = float(self.x_min) # lower bound
@@ -67,6 +50,8 @@ class Problem:
         # Define x and y
         self.x = torch.linspace(self.x_min, self.x_max, self.N_x, dtype= float).view(-1,1)
         self.y = torch.linspace(self.y_min, self.y_max, self.N_y, dtype= float).view(-1,1)
+        
+        self.dirichletMask = [] # list stores true values for Dirichlet BC points
 
     # temperature variables
     def setTemp(self, T_left = 0, T_top = 0, T_right = 1, T_bottom = 1, T_circle = 0.5):
@@ -75,6 +60,14 @@ class Problem:
         self.T_right = T_right
         self.T_bottom = T_bottom
         self.T_circle = T_circle
+
+    # BC type
+    def setBCtypes(self, BC_left = 'Dirichlet', BC_top = 'Dirichlet', BC_right = 'Dirichlet', BC_bottom = 'Dirichlet', BC_circle = 'Dirichlet'):
+        self.BC_left = BC_left
+        self.BC_top = BC_top
+        self.BC_right = BC_right
+        self.BC_bottom = BC_bottom
+        self.BC_circle = BC_circle
 
     # domain variables
     def setDomainVars(self, x_min = 0,x_max = 1,N_x = 500,y_min = 0,y_max = 1,N_y = 500):
@@ -85,12 +78,6 @@ class Problem:
         self.y_max = y_max
         self.N_y = N_y
 
-    def BCbooleans(self, BC_left, BC_top, BC_right, BC_bottom):
-        self.BC_left = BC_left
-        self.BC_top = BC_top
-        self.BC_right = BC_right
-        self.BC_bottom = BC_bottom
-
     # circle variables
     def setCircleVars(self, R = 0.1, x_circle = 0.5, y_circle = 0.5, N_circle = 500):
         self.R = R
@@ -99,17 +86,17 @@ class Problem:
         self.N_circle = N_circle
 
     # sampling variables
-    def setSamplingVars(self, N_u = 800, N_f = 1000):
+    def setSamplingVars(self, N_u = 1_000, N_f = 10_000):
         self.N_u = N_u
         self.N_f = N_f
     
     # neural network variables
-    def setNNVars(self, steps = 1_000, lr = 1e-1, N_Layers = 8, Nodes = 32, tolerance = 1e-6):
+    def setNNVars(self, steps = 1_000, lr = 1e-2, N_Layers = 2, Nodes = 32, tolerance = 1e-6):
         self.steps = steps
         self.lr = lr
         self.N_Layers = N_Layers
         self.Nodes = Nodes
-        self.layers = np.hstack([[2], np.full(self.N_Layers,32), [1]]) #8 hidden layers
+        self.layers = np.hstack([[4], np.full(self.N_Layers,32), [1]]) #8 hidden layers
         self.tolerance = tolerance
 
     # generate domain function
@@ -183,35 +170,40 @@ class Problem:
 
         X_train_list = []
         T_train_list = []
+        dirichletMask = []
         # Boundary Conditions 
         # define boundary conditions zones:
         if self.BC_left:
             left_X = np.hstack((X[0, :][:, None], Y[0, :][:, None]))
-            left_T = np.ones((left_X.shape[0], 1))*self.T_left
+            left_T = np.full((left_X.shape[0], 1), self.T_left)
 
             X_train_list.append(left_X)
             T_train_list.append(left_T)
+            dirichletMask = np.hstack((dirichletMask,(np.full(left_X.shape[0], self.BC_left == 'Dirichlet'))))
 
         if self.BC_top:
-            top_X = np.hstack((X[:, -1][:, None], Y[:, -1][:, None]))
-            top_T = np.ones((top_X.shape[0], 1))*self.T_top
+            top_X = np.hstack((X[1:-1, -1][:, None], Y[1:-1, -1][:, None]))
+            top_T = np.full((top_X.shape[0], 1), self.T_top)
 
             X_train_list.append(top_X)
             T_train_list.append(top_T)
+            dirichletMask = np.hstack((dirichletMask,(np.full(top_X.shape[0], self.BC_top == 'Dirichlet'))))
 
         if self.BC_right:
             right_X = np.hstack((X[-1, :][:, None], Y[0, :][:, None]))
-            right_T = np.ones((right_X.shape[0], 1)) *self.T_right
+            right_T = np.full((right_X.shape[0], 1), self.T_right)
 
             X_train_list.append(right_X)
             T_train_list.append(right_T)
+            dirichletMask = np.hstack((dirichletMask,(np.full(right_X.shape[0], self.BC_right == 'Dirichlet'))))
 
         if self.BC_bottom:
-            bottom_X = np.hstack((X[:, 0][:, None], Y[:, 0][:, None]))
-            bottom_T = np.ones((bottom_X.shape[0], 1)) *self.T_bottom
+            bottom_X = np.hstack((X[1:-1, 0][:, None], Y[1:-1, 0][:, None]))
+            bottom_T = np.full((bottom_X.shape[0], 1), self.T_bottom)
 
             X_train_list.append(bottom_X)
             T_train_list.append(bottom_T)
+            dirichletMask = np.hstack((dirichletMask,(np.full(bottom_X.shape[0], self.BC_bottom == 'Dirichlet'))))
 
         X_train = np.vstack(X_train_list)
         T_train = np.vstack(T_train_list)
@@ -223,16 +215,19 @@ class Problem:
 
             X_train = np.vstack((X_train, self.circle_X))
             T_train = np.vstack((T_train, self.circle_T))
+            dirichletMask = np.hstack((dirichletMask,(np.full(self.circle_X.shape[0], self.BC_circle == 'Dirichlet'))))
 
         # randomly choose N_u indices for training
         idx = np.random.choice(X_train.shape[0], self.N_u + self.N_circle*self.squareHasHole, replace = False)
 
         X_train_Nu = X_train[idx, :]
         T_train_Nu = T_train[idx, :]
+        dirichletMask_Nu = np.array(dirichletMask[idx], dtype= bool)
 
         self.X_train, self.T_train = X_train, T_train
         self.X_test = X_test
         self.X_train_Nu, self.T_train_Nu = X_train_Nu, T_train_Nu
+        self.dirichletMask = dirichletMask_Nu
 
     # generate PDE zones
     def generate_PDE(self):
@@ -275,6 +270,6 @@ class Problem:
         print('Training time: %.2f' % (elapsed))
 
         ''' Model Accuracy ''' 
-        u_pred, lossHistoryTensor, u_pred_history = PINN.test()
+        u_pred, lossHistoryTensor = PINN.test()
 
-        return u_pred, lossHistoryTensor, u_pred_history
+        return u_pred, lossHistoryTensor

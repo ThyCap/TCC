@@ -19,6 +19,7 @@ OK -- Study on Nu, Nf and Nf/Nu
 -- Study on weights system
 OK -- Fix legend labels on pplot2
 -- Understand evolution in iterations
+-- Create .JSON file system
 
 # Lessons learned: 
 -- NN will optimize to a very sharp second derivative. Possible hypotheses:
