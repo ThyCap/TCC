@@ -37,8 +37,8 @@ def partial_diff_equation(f, g):
 
 myProblem = Problem(partial_diff_equation, squareHasHole, weightsType)
 # myProblem.setTemp(T_left = 0, T_top = 0, T_right= 0, T_bottom= 0, T_circle= 1)
-myProblem.setSamplingVars(N_u = 1000, N_f = 100_000)
-myProblem.setNNVars(steps = 10_000, lr = 1e-3, tolerance = 1e-10, N_Layers = 1, Nodes = 8)
+myProblem.setSamplingVars(N_u = 100, N_f = 10_000)
+myProblem.setNNVars(steps = 10_000, lr = 1e-2, tolerance = 1e-10, N_Layers = 2, Nodes = 32)
 myProblem.setBCtypes(BC_left = 'Dirichlet', BC_top = 'Neumann', BC_right = 'Dirichlet', BC_bottom = 'Neumann')
 myProblem.setTemp(T_left = 0, T_top = 0, T_right= 1, T_bottom= 0, T_circle= 1)
 

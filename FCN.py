@@ -25,7 +25,7 @@ class FCN(nn.Module):
         #                     activation()]) for _ in range(N_LAYERS-1)])
         # self.fce = nn.Linear(N_HIDDEN, N_OUTPUT)
 
-        super().__init__() #call __init__ from parent class 
+        super(FCN, self).__init__() #call __init__ from parent class 
 
         self.Problem = Problem
         self.x_domain = x_domain
@@ -46,9 +46,15 @@ class FCN(nn.Module):
         self.error_vec_history = []
     
         'Initialise neural network as a list using nn.Modulelist' 
-        self.sparseLayer = sparseLayer(n_in = 2, n_out = 8)
-        self.hiddenLayers = nn.ModuleList([nn.Linear(Problem.layers[i], Problem.layers[i+1]) for i in range(len(Problem.layers)-1)])
-        
+        # self.sparseLayer = sparseLayer(n_in = 2, n_out = 8)
+        # self.hiddenLayers = nn.ModuleList([nn.Linear(Problem.layers[i], Problem.layers[i+1]) for i in range(len(Problem.layers)-1)])
+        # self.linears = nn.ModuleList()
+        self.linears = nn.ModuleList([self.sparseLayer(2,4), self.sparseLayer(4,16), nn.Linear(16,16), nn.Linear(16,16), nn.Linear(16,16), nn.Linear(16,16), self.sparseLayer(16, 1)])
+        # self.sparseLayers = [sparseLayer(n_in = 2, n_out = 8), sparseLayer(n_in = 8, n_out = 16), sparseLayer(n_in = 16, n_out = 8)]
+
+        # for layer in self.sparseLayers:
+        #     nn.Parameter(data = layer.weights)
+
         self.iter = 0
         self.startTime = time.time()
         self.totalElapsedTimeHistory = [0]
@@ -68,20 +74,61 @@ class FCN(nn.Module):
         # self.optimizer = optim.SGD(self.parameters(), 
         #                             lr = Problem.lr, 
         #                             momentum= 0.999)
+        # self.optimizer = optim.Rprop(self.parameters(), 
+        #                             lr = Problem.lr)
     
-        'Xavier Normal Initialization'
-        for i in range(len(Problem.layers)-1):
-            nn.init.xavier_normal_(self.hiddenLayers[i].weight.data, gain=1.0)
+        # 'Xavier Normal Initialization'
+        # for i in range(len(Problem.layers)-1):
+        #     nn.init.xavier_normal_(self.hiddenLayers[i].weight.data, gain=1.0)
             
-            # set biases to zero
-            nn.init.zeros_(self.hiddenLayers[i].bias.data)
+        #     # set biases to zero
+        #     nn.init.zeros_(self.hiddenLayers[i].bias.data)
+
+    def sparseLayer(self, n_in, n_out):
+        self.n_in, self.n_out = n_in, n_out
+
+        N = max(n_in, n_out)
+
+        self.weights = [nn.Parameter(torch.zeros(1,dtype=torch.float32)) for i in range(N)]
+
+        self.bias = [nn.Parameter(torch.tensor(1, dtype=torch.float32)) for i in range(N)]
+
+        lim = 0.01
+        for i in range(N):
+            nn.init.uniform_(self.weights[i], -lim, lim)
+            nn.init.zeros_(self.bias[i])
+
+    def sparseForward(self, x, n_in, n_out):
+        xi = [x[:,i].reshape(-1, 1) for i in range(n_in)]
+
+        if n_in > n_out:
+            ratio = int(n_in//n_out)
+
+            wx = [torch.mm(xi[i], self.weights[i].t()) for i in range(n_in)]
+            ai = []
+
+            for j in range(n_out):
+                    elem = torch.zeros((x.shape[0], 1), dtype= torch.float32)
+
+                    for k in range(ratio*j, ratio*(j + 1)):
+                        elem = torch.add(elem, wx[k])
+                        elem = torch.add(elem, self.bias[k])
+
+                    ai.append(elem)
+        else:
+            ratio = int(n_out//n_in)
+            wx = [torch.mm(xi[i // ratio], self.weights[i].t()) for i in range(n_out)]
+            ai = [torch.add(wx[i], self.bias[i]) for i in range(n_out)]
+
+        if len(ai) == 1:
+            result = torch.cat(ai, 1).reshape(-1,n_out)
+        else:
+            result = torch.cat(ai, 1).reshape(x.shape[0],n_out)
+
+        return result
 
     def forward(self, x):
         lb, ub, layers = self.Problem.lb, self.Problem.ub, self.Problem.layers
-
-        # print("result=");print(result);
-        # print(result.shape); input()
-        # return result
 
         if torch.is_tensor(x) != True:         
             x = torch.from_numpy(x)                
@@ -92,15 +139,18 @@ class FCN(nn.Module):
         #convert to float
         a = x.float()
 
-        # pass through custom layer
-        z = self.activation(self.sparseLayer(a))
+        z = self.linears[0].forward(a)
+        a = self.activation(z)
+
+        z = self.linears[1].forward(a)
+        a = self.activation(z)
         
-        for i in range(len(layers)-2):
-            z = self.hiddenLayers[i](z)         
+        for i in range(2, len(self.linears)-2):
+            z = self.linears[i](a)         
             a = self.activation(z)
             
-        a = self.hiddenLayers[-1](a)
-        
+        a = self.linears[-1].forward(a)
+
         return a.float()
 
     def loss_BC_Dirichlet(self, x_BC, y_BC):
@@ -168,6 +218,8 @@ class FCN(nn.Module):
             weights = [self.Problem.N_f, self.Problem.N_u]
         elif self.Problem.weightsType == 'sqSized_inv':
             weights = [np.sqrt(self.Problem.N_f), np.sqrt(self.Problem.N_u)]
+
+        weights = [1, 0]
         
         #normalize weights
         weights = np.array(weights)/sum(weights)

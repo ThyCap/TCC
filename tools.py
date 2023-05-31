@@ -96,7 +96,7 @@ class Problem:
         self.lr = lr
         self.N_Layers = N_Layers
         self.Nodes = Nodes
-        self.layers = np.hstack([[4], np.full(self.N_Layers,32), [1]]) #8 hidden layers
+        self.layers = np.hstack([[2], np.full(self.N_Layers,32), [1]]) #8 hidden layers
         self.tolerance = tolerance
 
     # generate domain function

@@ -1,41 +1,47 @@
 import torch
 import torch.nn as nn
 
-class sparseLayer(torch.nn.Module):
-  def __init__(self, n_in, n_out):
+class sparseLayer(nn.Module):
+  def __init__(self,PINN, n_in, n_out):
     super().__init__()
-    if n_in != 4 or n_out != 8:
-      print("FATAL: Input skip layer must be (2,4) ")
-    self.n_in, self.n_out = n_in, n_out  # (2,4)
 
-    self.weights0 = torch.nn.Parameter(torch.zeros((2,1),dtype=torch.float32))
-    self.weights1 = torch.nn.Parameter(torch.zeros((2,1),dtype=torch.float32))
+    self.n_in, self.n_out = n_in, n_out
 
-    self.bias0 = torch.nn.Parameter(torch.tensor(2, dtype=torch.float32))
-    self.bias1 = torch.nn.Parameter(torch.tensor(2, dtype=torch.float32))
+    N = max(n_in, n_out)
+
+    self.weights = [nn.Parameter(torch.zeros((1,1),dtype=torch.float32)) for i in range(N)]
+    self.bias = [nn.Parameter(torch.zeros(1, dtype=torch.float32)) for i in range(N)]
 
     lim = 0.01
-    torch.nn.init.uniform_(self.weights0, -lim, lim)
-    torch.nn.init.uniform_(self.weights1, -lim, lim)
-
-    torch.nn.init.zeros_(self.bias0)
-    torch.nn.init.zeros_(self.bias1)
-
+    for i in range(N):
+        nn.init.uniform_(self.weights[i], -lim, lim)
+        nn.init.zeros_(self.bias[i])
+    
   def forward(self, x):
-    # print("x="); print(x); print(x.shape);input()
-    x0 = x[:,0].reshape(-1,1)
-    # print("x0="); print(x0); print(x0.shape); input()
-    x1 = x[:,1].reshape(-1,1)
+    xi = [x[:,i].reshape(-1, 1) for i in range(self.n_in)]
 
-    # print("self.weights0="); print(self.weights0);
-    # print(self.weights0.shape); input()
-    wx0= torch.mm(x0, self.weights0.t())
-    wx1= torch.mm(x1, self.weights1.t())
+    if self.n_in > self.n_out:
+        ratio = int(self.n_in//self.n_out)
 
-    a = torch.add(wx0, self.bias0)
-    b = torch.add(wx1, self.bias1)
-   
-    result = torch.cat((a, b), 1).reshape(-1,4)
-    # print("result=");print(result);
-    # print(result.shape); input()
+        wx = [torch.mm(xi[i], self.weights[i].t()) for i in range(self.n_in)]
+        ai = []
+
+        for j in range(self.n_out):
+                elem = torch.zeros((x.shape[0], 1), dtype= torch.float32)
+
+                for k in range(ratio*j, ratio*(j + 1)):
+                    elem = torch.add(elem, wx[k])
+                    elem = torch.add(elem, self.bias[k])
+
+                ai.append(elem)
+    else:
+        ratio = int(self.n_out//self.n_in)
+        wx = [torch.mm(xi[i // ratio], self.weights[i].t()) for i in range(self.n_out)]
+        ai = [torch.add(wx[i], self.bias[i]) for i in range(self.n_out)]
+
+    if len(ai) == 1:
+        result = torch.cat(ai, 1).reshape(-1,self.n_out)
+    else:
+        result = torch.cat(ai, 1).reshape(x.shape[0],self.n_out)
+
     return result
